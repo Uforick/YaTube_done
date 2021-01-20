@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Профиль пользователя {{ author }}{% endblock %}
+{% block header %}Профиль пользователя <h1>{{ author }}</h1>{% endblock %}
+{% block content %}
+
+<main role="main" class="container">
+    <div class="row">
+        <div class="col-md-3 mb-3 mt-1">
+            {% include "includes/author_post_card.html" %}
+        </div>
+
+        <div class="col-md-9">
+            {% include "includes/post_item.html" with post=post %}
+            {% include "posts/comments.html" %}
+        </div>
+
+
+
+    </div>
+</main>
+
+{% endblock %}
