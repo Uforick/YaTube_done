@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from .forms import PostForm, CommentForm
-from .models import Group, Post, User, Comment
+from .models import Group, Post, User, Comment, Follow
 
 
 def index(request):
@@ -57,11 +57,21 @@ def profile(request, username):
     paginator = Paginator(post_list_author, 1)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
+    follow_check = Follow.objects.filter(user=request.user,
+                                         author=author).exists()
+    followers = Follow.objects.filter(author=author).count()
+    follows = Follow.objects.filter(user=author).count()
     return render(
         request,
         'posts/profile.html',
-        {'page': page, 'author': author,
-         'count_posts': count_posts, 'paginator': paginator}
+        {'page': page,
+         'author': author,
+         'count_posts': count_posts,
+         'paginator': paginator,
+         'following': follow_check,
+         'follows': follows,
+         'followers': followers
+         }
     )
 
 
@@ -123,6 +133,52 @@ def add_comment(request, username, post_id):
     form.save()
     return redirect(reverse('post', kwargs={'username': username,
                                             'post_id': post_id}))
+
+
+@login_required
+def follow_index(request):
+    paginator_limitation = 10
+    post_list = Post.objects.filter(author__following__user=request.user)
+    paginator = Paginator(post_list, paginator_limitation)
+    page_number = request.GET.get('page')
+    page = paginator.get_page(page_number)
+    return render(
+        request,
+        'posts/follow.html',
+        {'page': page, 'paginator': paginator}
+    )
+
+
+@login_required
+def profile_follow(request, username):
+    author = get_object_or_404(User, username=username)
+    if (request.user == author):
+        return redirect(reverse(
+            'profile',
+            kwargs={'username': username}
+        ))
+    Follow.objects.create(
+        user=request.user,
+        author=author,
+    )
+    return redirect(reverse(
+        'profile',
+        kwargs={'username': username}
+    ))
+
+
+@login_required
+def profile_unfollow(request, username):
+    author = get_object_or_404(User, username=username)
+    Follow.objects.filter(
+        user=request.user,
+        author=author
+    ).delete()
+    # delete_link.delete()
+    return redirect(reverse(
+        'profile',
+        kwargs={'username': username}
+    ))
 
 
 def page_not_found(request, exception):

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-
+{% load cache %}
 {% block title %} Последние обновления {% endblock %}
 
 {% block content %}
@@ -7,15 +7,15 @@
 
     {% include "includes/menu.html" with index=True %}
 
-    <h1> Последние обновления на сайте</h1>
+    <h1> Последние обновления в ленте</h1>
 
-
+    {% cache 20 index_page %}
 
     {% for post in page %}
     {% include "includes/post_item.html" with post=post %}
     {% endfor %}
 
-
+    {% endcache %}
 </div>
 
 {% if page.has_other_pages %}
