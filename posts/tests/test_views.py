@@ -174,7 +174,7 @@ class ViewsTests(TestCase):
         self.assertEqual(len(response.context['page']), 0)
 
     def test_login_user_can_follow_unfollow(self):
-        """Авторизованный пользователь может подписываться 
+        """Авторизованный пользователь может подписываться
         и удалять из подписок."""
         follow_count = 0
         follower = self.authorized_client2
@@ -193,8 +193,8 @@ class ViewsTests(TestCase):
         self.assertEqual(follow_count, 0)
 
     def test_follow_unfollow_post(self):
-        """Новая запись пользователя появляется в ленте тех, 
-        кто на него подписан и не появляется в ленте тех, 
+        """Новая запись пользователя появляется в ленте тех,
+        кто на него подписан и не появляется в ленте тех,
         кто не подписан на него"""
         Follow.objects.create(
             user=ViewsTests.user,
