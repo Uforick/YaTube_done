@@ -57,10 +57,15 @@ def profile(request, username):
     paginator = Paginator(post_list_author, 1)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
-    follow_check = Follow.objects.filter(user=request.user,
-                                         author=author).exists()
-    followers = Follow.objects.filter(author=author).count()
-    follows = Follow.objects.filter(user=author).count()
+    if request.user.is_authenticated:
+        follow_check = Follow.objects.filter(user=request.user,
+                                             author=author).exists()
+        followers = Follow.objects.filter(author=author).count()
+        follows = Follow.objects.filter(user=author).count()
+    else:
+        follow_check = None
+        followers = 0
+        follows = 0
     return render(
         request,
         'posts/profile.html',
@@ -126,7 +131,8 @@ def add_comment(request, username, post_id):
     post = Post.objects.get(pk=post_id)
     form = CommentForm(request.POST or None)
     if request.GET or not form.is_valid():
-        return render(request, 'posts/post.html', {'post': post_id})
+        return redirect(reverse('post', kwargs={'username': username,
+                                                'post_id': post_id}))
     comment = form.save(commit=False)
     comment.author = request.user
     comment.post = post
@@ -152,7 +158,10 @@ def follow_index(request):
 @login_required
 def profile_follow(request, username):
     author = get_object_or_404(User, username=username)
-    if (request.user == author):
+    if (request.user == author) or (Follow.objects.filter(
+        user=request.user,
+        author=author
+    ).count() > 0):
         return redirect(reverse(
             'profile',
             kwargs={'username': username}
@@ -174,7 +183,6 @@ def profile_unfollow(request, username):
         user=request.user,
         author=author
     ).delete()
-    # delete_link.delete()
     return redirect(reverse(
         'profile',
         kwargs={'username': username}

@@ -1,9 +1,15 @@
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from posts.models import Group, Post, User
 
 
+@override_settings(
+    CACHES={
+        'default': {
+            'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}
+    }
+)
 class PostURLTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -86,7 +92,8 @@ class PostURLTests(TestCase):
 
     def test_respone_for_author_user(self):
         """Страницы '/', 'new/', 'group/<slug>',
-        '/testuser/', '/testuser/1/', '/testuser/1/edit/'
+        '/testuser/', '/testuser/1/', '/testuser/1/edit/',
+        'username>/<int:post_id>/comment'
         отвечают  авторизованному пользователю"""
         templates_url_names = {
             reverse('index'): 200,

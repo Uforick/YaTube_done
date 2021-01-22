@@ -7,18 +7,25 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from posts.models import Group, Post, User
+from posts.models import Group, Post, User, Follow
 
 MEDIA_ROOT = tempfile.mkdtemp()
 
 
-@override_settings(MEDIA_ROOT=MEDIA_ROOT)
+@override_settings(
+    MEDIA_ROOT=MEDIA_ROOT,
+    CACHES={
+        'default': {
+            'BACKEND': 'django.core.cache.backends.dummy.DummyCache'
+        }
+    }
+)
 class ViewsTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        # settings.MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
         cls.user = User.objects.create(username='testuser')
+        cls.user2 = User.objects.create(username='testuser2')
         cls.group = Group.objects.create(
             id=1,
             title='Тестовая группа 3',
@@ -62,6 +69,8 @@ class ViewsTests(TestCase):
         self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+        self.authorized_client2 = Client()
+        self.authorized_client2.force_login(self.user2)
 
     def test_pages_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
@@ -163,3 +172,122 @@ class ViewsTests(TestCase):
             reverse('group_slug', kwargs={'slug': ViewsTests.group2.slug})
         )
         self.assertEqual(len(response.context['page']), 0)
+
+    def test_login_user_can_follow_unfollow(self):
+        """Авторизованный пользователь может подписываться 
+        и удалять из подписок."""
+        follow_count = 0
+        follower = self.authorized_client2
+        name = ViewsTests.user2
+        follower.post(
+            reverse('profile_follow', kwargs={
+                    'username': ViewsTests.post.author})
+        )
+        follow_count = Follow.objects.filter(user=name).count()
+        self.assertEqual(follow_count, 1)
+        follower.post(
+            reverse('profile_unfollow', kwargs={
+                    'username': ViewsTests.post.author})
+        )
+        follow_count = Follow.objects.filter(user=name).count()
+        self.assertEqual(follow_count, 0)
+
+    def test_follow_unfollow_post(self):
+        """Новая запись пользователя появляется в ленте тех, 
+        кто на него подписан и не появляется в ленте тех, 
+        кто не подписан на него"""
+        Follow.objects.create(
+            user=ViewsTests.user,
+            author=ViewsTests.user2,
+        )
+        response1 = self.authorized_client.get(
+            reverse('follow_index')
+        )
+        response2 = self.authorized_client2.get(
+            reverse('follow_index')
+        )
+        self.assertEqual(len(response1.context['page']), 0)
+        self.assertEqual(len(response2.context['page']), 0)
+        form_data = {
+            'text': 'Тестовый текст',
+        }
+        self.authorized_client2.post(
+            reverse('new_post'),
+            data=form_data,
+            follow=False
+        )
+        response1 = self.authorized_client.get(
+            reverse('follow_index')
+        )
+        response2 = self.authorized_client2.get(
+            reverse('follow_index')
+        )
+        self.assertEqual(len(response1.context['page']), 1)
+        self.assertEqual(len(response2.context['page']), 0)
+
+    def test_add_comment_for_user(self):
+        """Только авторизированный пользователь может комментировать посты"""
+        form_data = {
+            'text': 'Тестовый текст',
+        }
+        self.guest_client.post(
+            reverse('add_comment', kwargs={
+                    'username': ViewsTests.post.author,
+                    'post_id': ViewsTests.post.id
+                    }),
+            data=form_data
+        )
+        response = self.authorized_client.get(
+            reverse('post', kwargs={
+                    'username': ViewsTests.post.author,
+                    'post_id': ViewsTests.post.id
+                    }))
+        self.assertEqual(len(response.context['comments']), 0)
+        self.authorized_client.post(
+            reverse('add_comment', kwargs={
+                    'username': ViewsTests.post.author,
+                    'post_id': ViewsTests.post.id
+                    }),
+            data=form_data
+        )
+        response = self.authorized_client.get(
+            reverse('post', kwargs={
+                    'username': ViewsTests.post.author,
+                    'post_id': ViewsTests.post.id
+                    }))
+        self.assertEqual(len(response.context['comments']), 1)
+
+
+class CacheTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create(username='testuser')
+
+        cls.post = Post.objects.create(
+            id=1,
+            author=cls.user,
+            text='Тестовый текст'*10
+        )
+
+    def setUp(self):
+        self.guest_client = Client()
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+
+    def test_chache_index_page(self):
+        """Тест: новый пост не появляется на главной странице"""
+        form_data = {
+            'text': 'Тестовый текст',
+        }
+        response = self.authorized_client.get(reverse('index'))
+        self.assertEqual(len(response.context['page']), 1)
+        self.authorized_client.post(
+            reverse('add_comment', kwargs={
+                    'username': CacheTests.post.author,
+                    'post_id': CacheTests.post.id
+                    }),
+            data=form_data
+        )
+        response = self.authorized_client.get(reverse('index'))
+        self.assertEqual(len(response.context['page']), 1)
