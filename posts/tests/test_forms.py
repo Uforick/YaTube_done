@@ -17,13 +17,11 @@ class PostCreateFormTests(TestCase):
         settings.MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
         cls.user = User.objects.create(username='testuser')
         cls.group = Group.objects.create(
-            id=1,
             title='Тестовая группа 3',
             slug='3',
             description='Тестовый текст описания'
         )
         cls.post = Post.objects.create(
-            id=1,
             group=cls.group,
             author=cls.user,
             text='Тестовый текст'

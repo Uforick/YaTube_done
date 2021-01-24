@@ -18,14 +18,12 @@ class PostURLTests(TestCase):
         cls.user2 = User.objects.create(username='testuser2')
 
         cls.group = Group.objects.create(
-            id=1,
             title='Тестовая группа 2',
             slug='2',
             description='Тестовый текст описания'
         )
 
         cls.post = Post.objects.create(
-            id=1,
             group=cls.group,
             author=cls.user,
             text='Тестовый текст'*10

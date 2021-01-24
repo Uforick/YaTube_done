@@ -27,13 +27,11 @@ class ViewsTests(TestCase):
         cls.user = User.objects.create(username='testuser')
         cls.user2 = User.objects.create(username='testuser2')
         cls.group = Group.objects.create(
-            id=1,
             title='Тестовая группа 3',
             slug='3',
             description='Тестовый текст описания'
         )
         cls.group2 = Group.objects.create(
-            id=2,
             title='Тестовая группа 4',
             slug='4',
             description='Тестовый текст описания2'
@@ -50,9 +48,8 @@ class ViewsTests(TestCase):
             content=small_gif,
             content_type='image/gif'
         )
-        for num in range(12):
+        for _ in range(12):
             Post.objects.create(
-                id=num,
                 group=cls.group,
                 author=cls.user,
                 text='Тестовый текст',
@@ -173,18 +170,27 @@ class ViewsTests(TestCase):
         )
         self.assertEqual(len(response.context['page']), 0)
 
-    def test_login_user_can_follow_unfollow(self):
-        """Авторизованный пользователь может подписываться
-        и удалять из подписок."""
-        follow_count = 0
+    def test_login_user_can_follow(self):
+        """Авторизованный пользователь может подписываться"""
         follower = self.authorized_client2
         name = ViewsTests.user2
+        follow_count = Follow.objects.filter(user=name).count()
         follower.post(
             reverse('profile_follow', kwargs={
                     'username': ViewsTests.post.author})
         )
+        self.assertEqual(follow_count+1, 1)
+
+    def test_login_user_can_unfollow(self):
+        """Авторизованный пользователь может удалять из подписок."""
+        follower = self.authorized_client2
+        name = ViewsTests.user2
         follow_count = Follow.objects.filter(user=name).count()
-        self.assertEqual(follow_count, 1)
+        follower.post(
+            reverse('profile_follow', kwargs={
+                    'username': ViewsTests.post.author})
+        )
+
         follower.post(
             reverse('profile_unfollow', kwargs={
                     'username': ViewsTests.post.author})

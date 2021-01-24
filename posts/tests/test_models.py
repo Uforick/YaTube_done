@@ -10,7 +10,6 @@ class PostModelTest(TestCase):
         super().setUpClass()
         cls.user = User.objects.create(username='testuser')
         cls.post = Post.objects.create(
-            id=1,
             author=cls.user,
             text='Тестовый текст'*10
         )
