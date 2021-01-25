@@ -34,7 +34,6 @@ def group_posts(request, slug):
 
 @login_required
 def new_post(request):
-    is_edit = False
     form = PostForm(
         request.POST or None,
         files=request.FILES or None,
@@ -47,7 +46,7 @@ def new_post(request):
     return render(
         request,
         'posts/new.html',
-        {'form': form, 'is_edit': is_edit})
+        {'form': form, 'is_edit': False})
 
 
 def profile(request, username):
@@ -81,15 +80,15 @@ def profile(request, username):
 
 
 def post_view(request, username, post_id):
-    post_id = get_object_or_404(Post, pk=post_id, author__username=username)
-    count_posts = post_id.author.posts.count()
-    comments = post_id.comments.all()
+    post = get_object_or_404(Post, pk=post_id, author__username=username)
+    count_posts = post.author.posts.count()
+    comments = post.comments.all()
     form = CommentForm(request.POST or None)
     return render(
         request,
         'posts/post.html',
-        {'post': post_id,
-         'author': post_id.author,
+        {'post': post,
+         'author': post.author,
          'count_posts': count_posts,
          'comments': comments,
          'form': form}
@@ -98,7 +97,6 @@ def post_view(request, username, post_id):
 
 def post_edit(request, username, post_id):
     post = get_object_or_404(Post, pk=post_id, author__username=username)
-    is_edit = True
     if request.user != post.author:
         return redirect(reverse(
             'post',
@@ -119,7 +117,7 @@ def post_edit(request, username, post_id):
     return render(
         request,
         'posts/new.html',
-        {'form': form, 'post': post, 'is_edit': is_edit})
+        {'form': form, 'post': post, 'is_edit': True})
 
 
 @login_required
