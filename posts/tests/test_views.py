@@ -174,18 +174,19 @@ class ViewsTests(TestCase):
         """Авторизованный пользователь может подписываться"""
         follower = self.authorized_client2
         name = ViewsTests.user2
-        follow_count = Follow.objects.filter(user=name).count()
+        follow_before = Follow.objects.filter(user=name).count()
         follower.post(
             reverse('profile_follow', kwargs={
                     'username': ViewsTests.post.author})
         )
-        self.assertEqual(follow_count+1, 1)
+        follow_after = Follow.objects.filter(user=name).count()
+        self.assertEqual(follow_before+1, follow_after)
 
     def test_login_user_can_unfollow(self):
         """Авторизованный пользователь может удалять из подписок."""
         follower = self.authorized_client2
         name = ViewsTests.user2
-        follow_count = Follow.objects.filter(user=name).count()
+        follow_before = Follow.objects.filter(user=name).count()
         follower.post(
             reverse('profile_follow', kwargs={
                     'username': ViewsTests.post.author})
@@ -195,8 +196,8 @@ class ViewsTests(TestCase):
             reverse('profile_unfollow', kwargs={
                     'username': ViewsTests.post.author})
         )
-        follow_count = Follow.objects.filter(user=name).count()
-        self.assertEqual(follow_count, 0)
+        follow_after = Follow.objects.filter(user=name).count()
+        self.assertEqual(follow_before, follow_after)
 
     def test_follow_unfollow_post(self):
         """Новая запись пользователя появляется в ленте тех,
@@ -206,14 +207,15 @@ class ViewsTests(TestCase):
             user=ViewsTests.user,
             author=ViewsTests.user2,
         )
-        response1 = self.authorized_client.get(
+        response_user_follow = self.authorized_client.get(
             reverse('follow_index')
         )
-        response2 = self.authorized_client2.get(
+        response_user_no_follow = self.authorized_client2.get(
             reverse('follow_index')
         )
-        self.assertEqual(len(response1.context['page']), 0)
-        self.assertEqual(len(response2.context['page']), 0)
+        page_before_new_post_follow = len(response_user_follow.context['page'])
+        page_before_new_post_no_follow = len(
+            response_user_no_follow.context['page'])
         form_data = {
             'text': 'Тестовый текст',
         }
@@ -222,14 +224,19 @@ class ViewsTests(TestCase):
             data=form_data,
             follow=False
         )
-        response1 = self.authorized_client.get(
+        response_user_follow = self.authorized_client.get(
             reverse('follow_index')
         )
-        response2 = self.authorized_client2.get(
+        response_user_no_follow = self.authorized_client2.get(
             reverse('follow_index')
         )
-        self.assertEqual(len(response1.context['page']), 1)
-        self.assertEqual(len(response2.context['page']), 0)
+        page_after_new_post_follow = len(response_user_follow.context['page'])
+        page_after_new_post_no_follow = len(
+            response_user_no_follow.context['page'])
+        self.assertEqual(page_before_new_post_follow +
+                         1, page_after_new_post_follow)
+        self.assertEqual(page_before_new_post_no_follow,
+                         page_after_new_post_no_follow)
 
     def test_add_comment_for_user(self):
         """Только авторизированный пользователь может комментировать посты"""
